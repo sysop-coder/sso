@@ -387,17 +387,24 @@
         const payload = { action: action, ...params };
 
         fetch(GAS_WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload),
-          credentials: 'omit' // 💡 關鍵：強制清除 Cookie 夾帶
-        })
-        .then(res => res.json())
-        .then(data => resolve(data))
-        .catch(err => {
-          console.error(err);
-          reject(new Error('無法連線至 GAS Web App。'));
-        });
+  method: 'POST',
+  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+  body: JSON.stringify(payload),
+  credentials: 'omit'
+})
+.then(res => {
+  // 捕捉 Google 伺服器回傳的錯誤狀態碼 (如 429 請求過多、500 伺服器錯誤)
+  if (!res.ok) {
+    throw new Error(`Google 伺服器回應異常 (HTTP ${res.status})`);
+  }
+  return res.json();
+})
+.then(data => resolve(data))
+.catch(err => {
+  console.error("API 連線詳細錯誤：", err);
+  // 將真實的 err.message 往外傳遞，讓使用者介面可以直接顯示
+  reject(new Error(`無法連線至 GAS Web App。詳細原因：${err.message}`));
+});
       });
     }
     
