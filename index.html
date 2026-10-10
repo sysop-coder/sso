@@ -7,27 +7,58 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   
   <style>
-    body { font-family: Arial, sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    .login-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
+    body { 
+      font-family: Arial, sans-serif; 
+      background-color: #f4f6f9; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; /* 改用 min-height 確保內容過長時仍可捲動 */
+      margin: 0; 
+      padding: 16px; /* 為極小螢幕保留一點外部安全邊距 */
+      box-sizing: border-box;
+    }
+    
+    .login-container { 
+      background: white; 
+      /* 使用響應式 padding：預設（手機）稍小，並加入 box-sizing */
+      padding: 30px 24px; 
+      border-radius: 12px; /* 稍微增加圓角，視覺上更現代 */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+      /* 關鍵修改：寬度改為百分比，並設定最大寬度 */
+      width: 100%; 
+      max-width: 420px; /* 稍微放大最大寬度，讓平板/桌機上看起來更大氣 */
+      text-align: center; 
+      box-sizing: border-box;
+    }
+
     h2 { color: #1a73e8; margin-bottom: 24px; font-size: 22px; }
     .input-group { margin-bottom: 16px; text-align: left; }
     label { display: block; margin-bottom: 6px; color: #666; font-size: 14px; font-weight: bold; }
     
     /* 傳統輸入框樣式 (用於密碼等一般欄位) */
-    input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 15px; outline: none; transition: 0.2s; }
+    input[type="password"] { 
+      width: 100%; 
+      padding: 12px; /* 稍微增加高度，方便手機觸控 */
+      border: 1px solid #ddd; 
+      border-radius: 6px; 
+      box-sizing: border-box; 
+      font-size: 16px; /* 改為 16px 防止 iOS Safari 自動放大畫面 */
+      outline: none; 
+      transition: 0.2s; 
+    }
     input[type="password"]:focus { border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
     
-    /* --- 新增：複合式輸入框樣式 (實現網域後綴效果) --- */
+    /* --- 複合式輸入框樣式 (實現網域後綴效果) --- */
     .input-wrapper {
       display: flex;
       align-items: center;
       border: 1px solid #ddd;
-      border-radius: 4px;
+      border-radius: 6px;
       background-color: #fff;
       transition: border-color 0.2s, box-shadow 0.2s;
       overflow: hidden;
     }
-    /* 當內部的 input 被點擊聚焦時，整個 wrapper 亮起藍色邊框 */
     .input-wrapper:focus-within {
       border-color: #1a73e8;
       box-shadow: 0 0 0 1px #1a73e8;
@@ -36,32 +67,51 @@
       flex-grow: 1;
       border: none;
       outline: none;
-      padding: 10px;
-      font-size: 15px;
+      padding: 12px; /* 稍微增加高度 */
+      font-size: 16px; /* 改為 16px 防止 iOS Safari 自動放大畫面 */
       background: transparent;
       width: 100%;
     }
     .domain-suffix {
       padding-right: 12px;
       color: #555;
-      font-size: 15px;
-      pointer-events: none; /* 確保滑鼠點擊時不會干擾輸入 */
+      font-size: 15px; /* 後綴字體稍微縮小一點點以區分 */
+      pointer-events: none; 
       user-select: none;
+      white-space: nowrap; /* 防止網域後綴在小螢幕被擠到斷行 */
     }
     /* --------------------------------------------------- */
 
-    .btn { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+    .btn { 
+      width: 100%; 
+      padding: 14px; /* 增加按鈕高度，提升觸控手感與視覺份量 */
+      background-color: #1a73e8; 
+      color: white; 
+      border: none; 
+      border-radius: 6px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      margin-top: 10px; 
+      transition: 0.2s; 
+    }
     .btn:hover { background-color: #1557b0; }
     .btn:disabled { background-color: #9aa0a6; cursor: not-allowed; }
     .btn-secondary { background-color: white; color: #1a73e8; border: 1px solid #1a73e8; margin-top: 15px; }
     .btn-secondary:hover { background-color: #f4f8fe; }
     .text-link { color: #1a73e8; font-size: 14px; text-decoration: none; cursor: pointer; display: inline-block; margin-top: 15px; }
     .text-link:hover { text-decoration: underline; }
-    .msg-box { font-size: 14px; margin-top: 12px; min-height: 20px; text-align: left; }
+    .msg-box { font-size: 14px; margin-top: 12px; min-height: 20px; text-align: left; line-height: 1.5; }
     .error { color: #d93025; }
     .success { color: #137333; }
     
     .hidden { display: none; }
+
+    /* 加入 Media Query 針對大於平板尺寸的螢幕微調 */
+    @media (min-width: 480px) {
+      .login-container {
+        padding: 40px; /* 恢復大螢幕較寬裕的留白 */
+      }
+    }
   </style>
 </head>
 <body>
