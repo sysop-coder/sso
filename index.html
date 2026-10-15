@@ -166,7 +166,7 @@
 
   </div>
 
-  <script>
+<script>
     // 🛡️ 前端白名單預檢：過濾並淨化 redirect 參數
     const ALLOWED_REDIRECTS = [
       "https://sysop-coder.github.io/score/",
@@ -189,8 +189,8 @@
     // 「SSO 中心」GAS Web App 部署後的 /exec 網址
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwNoYW7a7GQ2IhYKXSPgIApSmxyy_aXY6Vud3IUuq3Vz1Sm79AgV9CWUnauKGYHyjbp/exec";
 
-    // 🛡️ 預設密碼的 SHA-256 雜湊值 (對應 demo1234)，原始碼中絕不出現明文密碼！
-    const DEFAULT_PWD_SHA256 = "f3295c5f3f72f86299c0357c294c9377c5070e819a2232c191a9bc61a02c03cb";
+    // 預設密碼常數 (比對時忽略前後空白與大小寫，確保 100% 精準攔截)
+    const DEFAULT_PASSWORD = "demo1234";
 
     let ssoPendingWindow = null;
     let lastLoginPassword = "";
@@ -208,12 +208,6 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // 計算字串的 SHA-256 雜湊值
-    async function sha256Hex(str) {
-      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-    }
-
     function switchView(viewId) {
       document.getElementById('view-login').classList.add('hidden');
       document.getElementById('view-forgot').classList.add('hidden');
@@ -226,7 +220,7 @@
     }
 
     // ==========================================
-    // 1. 登入邏輯 (含預設密碼雜湊強制攔截)
+    // 1. 登入邏輯 (直接精準攔截 demo1234 並同步鎖定後端)
     // ==========================================
     function handleLogin() {
       let email = document.getElementById('loginEmail').value.trim();
@@ -252,15 +246,14 @@
       }
 
       auth.signInWithEmailAndPassword(email, password)
-        .then(async (userCredential) => {
+        .then((userCredential) => {
           lastLoginPassword = password;
-          const pwdHash = await sha256Hex(password);
-          const isUsingDefaultPwd = (pwdHash === DEFAULT_PWD_SHA256);
 
-          // 🛡️ 若輸入的是預設密碼，立刻關閉空白視窗並強制導向改密碼畫面 (同時通知後端鎖定)
-          if (isUsingDefaultPwd) {
+          // 🛡️ 只要輸入的密碼是 demo1234，立刻攔截並強制跳轉至「首次登入密碼變更」畫面
+          if (password.trim().toLowerCase() === DEFAULT_PASSWORD) {
             if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
-            // 背景通知後端將此帳號標記為「尚未更改預設密碼」，防止 F12 繞過
+            
+            // 同步通知後端將此帳號在 Firebase 標記為「未更改預設密碼」，防止學生按 F12 繞過
             userCredential.user.getIdToken(true).then(idToken => {
               callGasApi('generateSSOToken', {
                 idToken: idToken,
@@ -268,6 +261,7 @@
                 isDefaultPassword: true
               }).catch(() => {});
             });
+
             switchView('view-first-time');
             btn.disabled = false;
             btn.innerText = "登入";
@@ -329,7 +323,7 @@
     // ==========================================
     // 3. 首次登入強制更新密碼邏輯
     // ==========================================
-    async function handleFirstTimeSetup() {
+    function handleFirstTimeSetup() {
       const newPwd = document.getElementById('newPassword').value;
       const confirmPwd = document.getElementById('confirmPassword').value;
       const msgBox = document.getElementById('firstTimeMsg');
@@ -338,10 +332,8 @@
       if (!newPwd || !confirmPwd) return msgBox.innerText = "請完整填寫新密碼！";
       if (newPwd !== confirmPwd) return msgBox.innerText = "兩次輸入的密碼不一致！";
       if (newPwd.length < 6) return msgBox.innerText = "為了帳號安全，新密碼長度必須至少為 6 個字元！";
-
-      const newPwdHash = await sha256Hex(newPwd);
-      if (newPwd === lastLoginPassword || newPwdHash === DEFAULT_PWD_SHA256) {
-        return msgBox.innerText = "⚠️ 新密碼不可與初始預設密碼或舊密碼相同！";
+      if (newPwd === lastLoginPassword || newPwd.trim().toLowerCase() === DEFAULT_PASSWORD) {
+        return msgBox.innerText = "⚠️ 新密碼不可與預設密碼 (demo1234) 或舊密碼相同！";
       }
 
       btn.disabled = true;
@@ -413,7 +405,6 @@
           justUpdatedPassword: Boolean(justUpdatedPassword),
           isDefaultPassword: false
         }).then(function(response) {
-          // 🛡️ 若後端發現該帳號尚未完成首次密碼變更，強制退回改密碼畫面
           if (!response.success && response.requirePasswordChange) {
             if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
             switchView('view-first-time');
