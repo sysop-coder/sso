@@ -14,21 +14,19 @@
       display: flex; 
       justify-content: center; 
       align-items: center; 
-      min-height: 100vh; /* 改用 min-height 確保內容過長時仍可捲動 */
+      min-height: 100vh;
       margin: 0; 
-      padding: 16px; /* 為極小螢幕保留一點外部安全邊距 */
+      padding: 16px;
       box-sizing: border-box;
     }
     
     .login-container { 
       background: white; 
-      /* 使用響應式 padding：預設（手機）稍小，並加入 box-sizing */
       padding: 30px 24px; 
-      border-radius: 12px; /* 稍微增加圓角，視覺上更現代 */
+      border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-      /* 關鍵修改：寬度改為百分比，並設定最大寬度 */
       width: 100%; 
-      max-width: 420px; /* 稍微放大最大寬度，讓平板/桌機上看起來更大氣 */
+      max-width: 420px;
       text-align: center; 
       box-sizing: border-box;
     }
@@ -37,14 +35,13 @@
     .input-group { margin-bottom: 16px; text-align: left; }
     label { display: block; margin-bottom: 6px; color: #666; font-size: 14px; font-weight: bold; }
     
-    /* 傳統輸入框樣式 (用於密碼等一般欄位) */
     input[type="password"] { 
       width: 100%; 
-      padding: 12px; /* 稍微增加高度，方便手機觸控 */
+      padding: 12px;
       border: 1px solid #ddd; 
       border-radius: 6px; 
       box-sizing: border-box; 
-      font-size: 16px; /* 改為 16px 防止 iOS Safari 自動放大畫面 */
+      font-size: 16px;
       outline: none; 
       transition: 0.2s; 
     }
@@ -68,24 +65,24 @@
       flex-grow: 1;
       border: none;
       outline: none;
-      padding: 12px; /* 稍微增加高度 */
-      font-size: 16px; /* 改為 16px 防止 iOS Safari 自動放大畫面 */
+      padding: 12px;
+      font-size: 16px;
       background: transparent;
       width: 100%;
     }
     .domain-suffix {
       padding-right: 12px;
       color: #555;
-      font-size: 15px; /* 後綴字體稍微縮小一點點以區分 */
+      font-size: 15px;
       pointer-events: none; 
       user-select: none;
-      white-space: nowrap; /* 防止網域後綴在小螢幕被擠到斷行 */
+      white-space: nowrap;
     }
     /* --------------------------------------------------- */
 
     .btn { 
       width: 100%; 
-      padding: 14px; /* 增加按鈕高度，提升觸控手感與視覺份量 */
+      padding: 14px;
       background-color: #1a73e8; 
       color: white; 
       border: none; 
@@ -107,10 +104,9 @@
     
     .hidden { display: none; }
 
-    /* 加入 Media Query 針對大於平板尺寸的螢幕微調 */
     @media (min-width: 480px) {
       .login-container {
-        padding: 40px; /* 恢復大螢幕較寬裕的留白 */
+        padding: 40px;
       }
     }
   </style>
@@ -130,7 +126,7 @@
       </div>
       <div class="input-group">
         <label>密碼</label>
-        <input type="password" id="loginPassword" placeholder="首次登入預設密碼是demo1234">
+        <input type="password" id="loginPassword" placeholder="請輸入登入密碼">
       </div>
       <button id="btnLogin" class="btn" onclick="handleLogin()">登入</button>
       <div class="msg-box error" id="loginMsg"></div>
@@ -173,16 +169,15 @@
   </div>
 
   <script>
-    // GitHub Pages 不會解析 GAS 的 <?= ... ?> 模板語法。
     const REDIRECT_TARGET = new URLSearchParams(window.location.search).get('redirect') || '';
 
-    // 請填入「SSO 中心」GAS Web App 部署後的 /exec 網址，不是成績系統的網址。
+    // 「SSO 中心」GAS Web App 部署後的 /exec 網址
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwNoYW7a7GQ2IhYKXSPgIApSmxyy_aXY6Vud3IUuq3Vz1Sm79AgV9CWUnauKGYHyjbp/exec";
     
     // 預設密碼 (系統靠比對這個密碼來判斷是否為首次登入)
     const DEFAULT_PASSWORD = "demo1234"; 
 
-    // 💡 核心思路：預先宣告全域變數來抓住空白視窗，並偵測是否為 iOS 裝置
+    // 預先宣告全域變數來抓住空白視窗，並偵測是否為 iOS 裝置
     let ssoPendingWindow = null;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); 
 
@@ -220,7 +215,6 @@
       
       if (!email || !password) return msgBox.innerText = "請完整輸入帳號與密碼。";
       
-      // 自動補齊網域判斷
       if (!email.includes('@')) {
         email = email + "@st.tc.edu.tw";
       }
@@ -229,7 +223,6 @@
       btn.innerText = "驗證中...";
       msgBox.innerText = "";
 
-      // 💡 核心思路實作：若是 iOS，點擊當下立刻開啟空白新分頁並握住控制權
       if (isIOS) {
         ssoPendingWindow = window.open('', '_blank');
         if (ssoPendingWindow) {
@@ -240,7 +233,6 @@
       auth.signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
           if (password === DEFAULT_PASSWORD) {
-            // 首次登入需留在原頁面設定密碼，所以要把剛剛開的白畫面關掉
             if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
             switchView('view-first-time');
             btn.disabled = false;
@@ -250,22 +242,18 @@
           proceedToRedirect(userCredential.user);
         })
         .catch((error) => {
-         if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
-  
+          if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
           btn.innerText = "登入";
 
-           // 攔截 Firebase 原生的次數限制錯誤
-           if (error.code === 'auth/too-many-requests') {
-           msgBox.innerText = "🔒 密碼錯誤次數過多！為保護帳號安全，系統已暫時鎖定此帳號，請稍候幾分鐘後再試。";
-           btn.disabled = true; // 暫時鎖住按鈕，提升使用者體驗
-    
-           // 讓按鈕過幾分鐘後自動恢復 (這裡純粹為了 UX，真正的封鎖時間由 Firebase 決定)
-           setTimeout(() => { btn.disabled = false; }, 3 * 60 * 1000); 
-           } else {
+          if (error.code === 'auth/too-many-requests') {
+            msgBox.innerText = "🔒 密碼錯誤次數過多！為保護帳號安全，系統已暫時鎖定此帳號，請稍候幾分鐘後再試。";
+            btn.disabled = true;
+            setTimeout(() => { btn.disabled = false; }, 3 * 60 * 1000); 
+          } else {
             msgBox.innerText = "登入失敗：帳號或密碼錯誤";
             btn.disabled = false;
-                 }
-            });
+          }
+        });
     }
 
     // ==========================================
@@ -281,7 +269,6 @@
         return msgBox.innerText = "請輸入您的帳號！";
       }
 
-      // 自動補齊網域判斷
       if (!email.includes('@')) {
         email = email + "@st.tc.edu.tw";
       }
@@ -321,7 +308,6 @@
       btn.disabled = true;
       btn.innerText = "密碼更新中...";
       
-      // 💡 首次登入更新密碼時，同樣要先開好視窗
       if (isIOS) {
         ssoPendingWindow = window.open('', '_blank');
         if (ssoPendingWindow) {
@@ -331,7 +317,6 @@
 
       const user = auth.currentUser;
 
-      // 僅呼叫更新密碼
       user.updatePassword(newPwd)
       .then(() => {
         msgBox.className = "msg-box success";
@@ -339,9 +324,7 @@
         proceedToRedirect(user);
       })
       .catch((error) => {
-        // 💡 補丁：如果更新密碼失敗，同樣把白畫面關掉！
         if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
-        
         btn.disabled = false;
         btn.innerText = "確認並更新密碼";
         msgBox.className = "msg-box error";
@@ -350,31 +333,24 @@
     }
 
     // ==========================================
-    // 產生 Token 並跳轉回子系統 (安全握手邏輯更新)
+    // 🛡️ 【資安修補版】產生 Token 並跳轉回子系統
+    // 只傳遞加密簽章的 idToken，絕不在前端傳遞明文 roleId 或 email
     // ==========================================
     function proceedToRedirect(user) {
       if (REDIRECT_TARGET) {
-        const userEmail = user.email;
-        const userDisplayName = user.displayName || "教職員";
-        
-        // 💡 關鍵新增：取得使用者的 Custom Claims (包含我們在管理後台設定的 ssoRoleId)
-        user.getIdTokenResult().then((idTokenResult) => {
+        // 強制向 Firebase 取得最新簽發的加密 JWT (idToken)
+        user.getIdToken(true).then((idToken) => {
           
-          // 取出角色代碼，如果沒有設定過，就給預設值 'teacher'
-          const userRole = idTokenResult.claims.ssoRoleId || 'teacher';
-
           callGasApi('generateSSOToken', {
-            email: userEmail,
-            displayName: userDisplayName,
-            roleId: userRole,
+            idToken: idToken,
             targetAppUrl: REDIRECT_TARGET
           }).then(function(response) {
               if (response.success) {
-                // 🛡️ 第一重防禦：如果是 iOS 且有成功開出新視窗，直接塞入網址！
+                // 🛡️ 第一重防禦：如果是 iOS 且有成功開出新視窗，直接塞入網址
                 if (ssoPendingWindow) {
                   ssoPendingWindow.location.href = response.redirectUrl;
                   
-                  const successStr = "✅ 驗證成功！已在新分頁開啟成績系統。";
+                  const successStr = "✅ 驗證成功！已在新分頁開啟系統。";
                   if (document.getElementById('view-login') && !document.getElementById('view-login').classList.contains('hidden')) {
                     document.getElementById('loginMsg').className = "msg-box success";
                     document.getElementById('loginMsg').innerHTML = successStr;
@@ -387,8 +363,8 @@
                   try {
                     window.top.location.href = response.redirectUrl;
                   } catch (e) {
-                    // 🛡️ 第三重防禦：萬一全部被擋，退回您的絕招「手動綠色按鈕」
-                    const btnHtml = `<br><br><a href="${response.redirectUrl}" target="_top" style="display:inline-block; padding:12px 24px; background-color:#27ae60; color:white; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px; width:100%; text-align:center; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🚀 點此進入成績查詢系統</a>`;
+                    // 🛡️ 第三重防禦：萬一全部被擋，退回手動按鈕
+                    const btnHtml = `<br><br><a href="${response.redirectUrl}" target="_top" style="display:inline-block; padding:12px 24px; background-color:#27ae60; color:white; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px; width:100%; text-align:center; box-sizing:border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">🚀 點此進入系統</a>`;
                     if (document.getElementById('view-login') && !document.getElementById('view-login').classList.contains('hidden')) {
                       document.getElementById('btnLogin').style.display = 'none';
                       document.getElementById('loginMsg').className = "msg-box success";
@@ -414,7 +390,8 @@
             });
             
         }).catch((error) => {
-          alert("權限解析失敗：" + error.message);
+          if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
+          alert("安全憑證取得失敗：" + error.message);
         });
 
       } else {
@@ -425,8 +402,7 @@
       }
     }
 
-
-// 改用 fetch POST 呼叫 GAS，並加入 credentials: 'omit' 避免 Google 帳號干擾
+    // 改用 fetch POST 呼叫 GAS，並加入 credentials: 'omit' 避免 Google 帳號干擾
     function callGasApi(action, params) {
       return new Promise((resolve, reject) => {
         if (GAS_WEB_APP_URL.includes('請填入SSO部署ID')) {
@@ -434,31 +410,27 @@
           return;
         }
 
-        // 將資料打包成 JSON 格式
         const payload = { action: action, ...params };
 
         fetch(GAS_WEB_APP_URL, {
-  method: 'POST',
-  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-  body: JSON.stringify(payload),
-  credentials: 'omit'
-})
-.then(res => {
-  // 捕捉 Google 伺服器回傳的錯誤狀態碼 (如 429 請求過多、500 伺服器錯誤)
-  if (!res.ok) {
-    throw new Error(`Google 伺服器回應異常 (HTTP ${res.status})`);
-  }
-  return res.json();
-})
-.then(data => resolve(data))
-.catch(err => {
-  console.error("API 連線詳細錯誤：", err);
-  // 將真實的 err.message 往外傳遞，讓使用者介面可以直接顯示
-  reject(new Error(`無法連線至 GAS Web App。詳細原因：${err.message}`));
-});
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+          credentials: 'omit'
+        })
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`Google 伺服器回應異常 (HTTP ${res.status})`);
+          }
+          return res.json();
+        })
+        .then(data => resolve(data))
+        .catch(err => {
+          console.error("API 連線詳細錯誤：", err);
+          reject(new Error(`無法連線至 GAS Web App。詳細原因：${err.message}`));
+        });
       });
     }
-    
   </script>
 </body>
 </html>
