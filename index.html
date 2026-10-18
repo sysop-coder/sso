@@ -35,18 +35,6 @@
     .input-group { margin-bottom: 16px; text-align: left; }
     label { display: block; margin-bottom: 6px; color: #666; font-size: 14px; font-weight: bold; }
     
-    input[type="password"] { 
-      width: 100%; 
-      padding: 12px;
-      border: 1px solid #ddd; 
-      border-radius: 6px; 
-      box-sizing: border-box; 
-      font-size: 16px;
-      outline: none; 
-      transition: 0.2s; 
-    }
-    input[type="password"]:focus { border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
-    
     .input-wrapper {
       display: flex;
       align-items: center;
@@ -68,6 +56,7 @@
       font-size: 16px;
       background: transparent;
       width: 100%;
+      box-sizing: border-box;
     }
     .domain-suffix {
       padding-right: 12px;
@@ -76,6 +65,29 @@
       pointer-events: none; 
       user-select: none;
       white-space: nowrap;
+    }
+
+    /* 👁️ 密碼顯示/隱藏切換小按鈕 */
+    .toggle-pwd-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      margin-right: 6px;
+      background: #f1f3f4;
+      border: none;
+      border-radius: 4px;
+      color: #5f6368;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .toggle-pwd-btn:hover {
+      background: #e8f0fe;
+      color: #1a73e8;
     }
 
     .btn { 
@@ -114,6 +126,7 @@
 
   <div class="login-container">
     
+    <!-- 1. 登入畫面 -->
     <div id="view-login">
       <h2>豐東國中 系統登入</h2>
       <div class="input-group">
@@ -125,7 +138,12 @@
       </div>
       <div class="input-group">
         <label>密碼</label>
-        <input type="password" id="loginPassword" placeholder="首次登入密碼預設是demo1234" autocomplete="current-password">
+        <div class="input-wrapper">
+          <input type="password" id="loginPassword" placeholder="首次登入密碼預設是demo1234" autocomplete="current-password">
+          <button type="button" class="toggle-pwd-btn" onclick="togglePassword('loginPassword', this)" tabindex="-1" title="顯示或隱藏密碼">
+            <span class="pwd-icon">👁️</span><span class="pwd-text">顯示</span>
+          </button>
+        </div>
       </div>
       <button id="btnLogin" class="btn" onclick="handleLogin()">登入</button>
       <div class="msg-box error" id="loginMsg"></div>
@@ -133,6 +151,7 @@
       <a class="text-link" onclick="switchView('view-forgot')">忘記密碼？點此重設</a>
     </div>
 
+    <!-- 2. 忘記密碼畫面 -->
     <div id="view-forgot" class="hidden">
       <h2>密碼重設</h2>
       <p style="font-size: 14px; color: #555; text-align: left; line-height: 1.5;">請輸入您的登入帳號，系統將發送重設密碼連結至您的信箱。</p>
@@ -148,6 +167,7 @@
       <div class="msg-box" id="forgotMsg"></div>
     </div>
 
+    <!-- 3. 首次登入強制改密畫面 -->
     <div id="view-first-time" class="hidden">
       <h2>⚠️ 首次登入密碼變更</h2>
       <p style="font-size: 13px; color: #d93025; text-align: left; line-height: 1.5; background: #fce8e6; padding: 10px; border-radius: 4px;">
@@ -155,11 +175,21 @@
       </p>
       <div class="input-group">
         <label>新密碼 (至少 6 個字元，請勿使用預設密碼)</label>
-        <input type="password" id="newPassword" placeholder="請輸入新密碼" autocomplete="new-password">
+        <div class="input-wrapper">
+          <input type="password" id="newPassword" placeholder="請輸入新密碼" autocomplete="new-password">
+          <button type="button" class="toggle-pwd-btn" onclick="togglePassword('newPassword', this)" tabindex="-1" title="顯示或隱藏密碼">
+            <span class="pwd-icon">👁️</span><span class="pwd-text">顯示</span>
+          </button>
+        </div>
       </div>
       <div class="input-group">
         <label>確認新密碼</label>
-        <input type="password" id="confirmPassword" placeholder="請再次輸入新密碼" autocomplete="new-password">
+        <div class="input-wrapper">
+          <input type="password" id="confirmPassword" placeholder="請再次輸入新密碼" autocomplete="new-password">
+          <button type="button" class="toggle-pwd-btn" onclick="togglePassword('confirmPassword', this)" tabindex="-1" title="顯示或隱藏密碼">
+            <span class="pwd-icon">👁️</span><span class="pwd-text">顯示</span>
+          </button>
+        </div>
       </div>
       <button id="btnFirstTime" class="btn" style="background-color: #137333;" onclick="handleFirstTimeSetup()">確認並更新密碼</button>
       <div class="msg-box error" id="firstTimeMsg"></div>
@@ -181,7 +211,7 @@
 
     function getSafeRedirectTarget() {
       const rawRedirect = new URLSearchParams(window.location.search).get('redirect') || '';
-      if (!rawRedirect) return DEFAULT_APP_URL; // ✨ 若老師直接從書籤進入 SSO，預設導向成績系統
+      if (!rawRedirect) return DEFAULT_APP_URL;
       const cleanUrl = rawRedirect.split('?')[0].split('#')[0].trim();
       return ALLOWED_REDIRECTS.includes(cleanUrl) ? cleanUrl : DEFAULT_APP_URL;
     }
@@ -197,7 +227,7 @@
     let ssoPendingWindow = null;
     let lastLoginPassword = "";
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isInIframe = (window.self !== window.top); // ✨ 僅在 iframe 內才需要為 iOS 預開新視窗
+    const isInIframe = (window.self !== window.top);
 
     const firebaseConfig = {
       apiKey: "AIzaSyAtE0_gcGv5GHJX4N1dJSTQezN7tjylRuY",
@@ -211,7 +241,39 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // ✨ 綁定鍵盤 Enter 鍵快速送出
+    // 👁️ 切換密碼顯示與隱藏
+    function togglePassword(inputId, btnEl) {
+      const inputEl = document.getElementById(inputId);
+      if (!inputEl) return;
+      const iconSpan = btnEl.querySelector('.pwd-icon');
+      const textSpan = btnEl.querySelector('.pwd-text');
+
+      if (inputEl.type === 'password') {
+        inputEl.type = 'text';
+        if (iconSpan) iconSpan.textContent = '🙈';
+        if (textSpan) textSpan.textContent = '隱藏';
+      } else {
+        inputEl.type = 'password';
+        if (iconSpan) iconSpan.textContent = '👁️';
+        if (textSpan) textSpan.textContent = '顯示';
+      }
+    }
+
+    // 🔒 重置所有密碼框為隱藏狀態
+    function resetAllPasswordVisibility() {
+      ['loginPassword', 'newPassword', 'confirmPassword'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.type = 'password';
+      });
+      document.querySelectorAll('.toggle-pwd-btn').forEach(btn => {
+        const iconSpan = btn.querySelector('.pwd-icon');
+        const textSpan = btn.querySelector('.pwd-text');
+        if (iconSpan) iconSpan.textContent = '👁️';
+        if (textSpan) textSpan.textContent = '顯示';
+      });
+    }
+
+    // 綁定鍵盤 Enter 鍵快速送出
     document.addEventListener("DOMContentLoaded", function() {
       const bindEnter = (inputIds, actionFn) => {
         inputIds.forEach(id => {
@@ -242,7 +304,8 @@
       document.getElementById('forgotMsg').innerText = "";
       document.getElementById('firstTimeMsg').innerText = "";
 
-      // 切換畫面時清空新密碼欄位
+      resetAllPasswordVisibility();
+
       if (viewId !== 'view-first-time') {
         document.getElementById('newPassword').value = "";
         document.getElementById('confirmPassword').value = "";
@@ -285,7 +348,6 @@
           if (password.trim().toLowerCase() === DEFAULT_PASSWORD) {
             if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
             
-            // 同步通知後端將此帳號在 Firebase 標記為「未更改預設密碼」，防止按 F12 繞過
             userCredential.user.getIdToken(true).then(idToken => {
               callGasApi('generateSSOToken', {
                 idToken: idToken,
@@ -395,6 +457,7 @@
       user.updatePassword(newPwd)
         .then(() => {
           lastLoginPassword = "";
+          resetAllPasswordVisibility();
           msgBox.className = "msg-box success";
           msgBox.innerText = "✅ 密碼設定成功！正在核發安全憑證...";
           proceedToRedirect(user, true);
