@@ -9,7 +9,7 @@
   
   <style>
     body { 
-      font-family: Arial, sans-serif; 
+      font-family: Arial, "Microsoft JhengHei", sans-serif; 
       background-color: #f4f6f9; 
       display: flex; 
       justify-content: center; 
@@ -86,6 +86,7 @@
       border: none; 
       border-radius: 6px; 
       font-size: 16px; 
+      font-weight: bold;
       cursor: pointer; 
       margin-top: 10px; 
       transition: 0.2s; 
@@ -168,6 +169,7 @@
 
 <script>
     // 🛡️ 前端白名單預檢：過濾並淨化 redirect 參數
+    const DEFAULT_APP_URL = "https://sysop-coder.github.io/score/";
     const ALLOWED_REDIRECTS = [
       "https://sysop-coder.github.io/score/",
       "https://sysop-coder.github.io/score", 
@@ -179,9 +181,9 @@
 
     function getSafeRedirectTarget() {
       const rawRedirect = new URLSearchParams(window.location.search).get('redirect') || '';
-      if (!rawRedirect) return '';
+      if (!rawRedirect) return DEFAULT_APP_URL; // ✨ 若老師直接從書籤進入 SSO，預設導向成績系統
       const cleanUrl = rawRedirect.split('?')[0].split('#')[0].trim();
-      return ALLOWED_REDIRECTS.includes(cleanUrl) ? cleanUrl : "https://sysop-coder.github.io/score/";
+      return ALLOWED_REDIRECTS.includes(cleanUrl) ? cleanUrl : DEFAULT_APP_URL;
     }
 
     const REDIRECT_TARGET = getSafeRedirectTarget();
@@ -194,7 +196,8 @@
 
     let ssoPendingWindow = null;
     let lastLoginPassword = "";
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isInIframe = (window.self !== window.top); // ✨ 僅在 iframe 內才需要為 iOS 預開新視窗
 
     const firebaseConfig = {
       apiKey: "AIzaSyAtE0_gcGv5GHJX4N1dJSTQezN7tjylRuY",
@@ -208,6 +211,27 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
+    // ✨ 綁定鍵盤 Enter 鍵快速送出
+    document.addEventListener("DOMContentLoaded", function() {
+      const bindEnter = (inputIds, actionFn) => {
+        inputIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener("keydown", function(e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                actionFn();
+              }
+            });
+          }
+        });
+      };
+
+      bindEnter(['loginEmail', 'loginPassword'], handleLogin);
+      bindEnter(['forgotEmail'], handleForgotPassword);
+      bindEnter(['newPassword', 'confirmPassword'], handleFirstTimeSetup);
+    });
+
     function switchView(viewId) {
       document.getElementById('view-login').classList.add('hidden');
       document.getElementById('view-forgot').classList.add('hidden');
@@ -217,16 +241,24 @@
       document.getElementById('loginMsg').innerText = "";
       document.getElementById('forgotMsg').innerText = "";
       document.getElementById('firstTimeMsg').innerText = "";
+
+      // 切換畫面時清空新密碼欄位
+      if (viewId !== 'view-first-time') {
+        document.getElementById('newPassword').value = "";
+        document.getElementById('confirmPassword').value = "";
+      }
     }
 
     // ==========================================
     // 1. 登入邏輯 (直接精準攔截 demo1234 並同步鎖定後端)
     // ==========================================
     function handleLogin() {
-      let email = document.getElementById('loginEmail').value.trim();
+      const btn = document.getElementById('btnLogin');
+      if (btn.disabled) return;
+
+      let email = document.getElementById('loginEmail').value.replace(/\s+/g, '');
       const password = document.getElementById('loginPassword').value;
       const msgBox = document.getElementById('loginMsg');
-      const btn = document.getElementById('btnLogin');
       
       if (!email || !password) return msgBox.innerText = "請完整輸入帳號與密碼。";
       
@@ -238,7 +270,7 @@
       btn.innerText = "驗證中...";
       msgBox.innerText = "";
 
-      if (isIOS && REDIRECT_TARGET) {
+      if (isIOS && isInIframe && REDIRECT_TARGET) {
         ssoPendingWindow = window.open('', '_blank');
         if (ssoPendingWindow) {
           ssoPendingWindow.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px; color:#1a73e8;">SSO 安全驗證中，請稍候...</h2>');
@@ -253,11 +285,11 @@
           if (password.trim().toLowerCase() === DEFAULT_PASSWORD) {
             if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
             
-            // 同步通知後端將此帳號在 Firebase 標記為「未更改預設密碼」，防止學生按 F12 繞過
+            // 同步通知後端將此帳號在 Firebase 標記為「未更改預設密碼」，防止按 F12 繞過
             userCredential.user.getIdToken(true).then(idToken => {
               callGasApi('generateSSOToken', {
                 idToken: idToken,
-                targetAppUrl: REDIRECT_TARGET || "https://sysop-coder.github.io/score/",
+                targetAppUrl: REDIRECT_TARGET,
                 isDefaultPassword: true
               }).catch(() => {});
             });
@@ -289,9 +321,11 @@
     // 2. 忘記密碼邏輯
     // ==========================================
     function handleForgotPassword() {
-      let email = document.getElementById('forgotEmail').value.trim();
-      const msgBox = document.getElementById('forgotMsg');
       const btn = document.getElementById('btnForgot');
+      if (btn.disabled) return;
+
+      let email = document.getElementById('forgotEmail').value.replace(/\s+/g, '');
+      const msgBox = document.getElementById('forgotMsg');
 
       if (!email) {
         msgBox.className = "msg-box error";
@@ -324,11 +358,14 @@
     // 3. 首次登入強制更新密碼邏輯
     // ==========================================
     function handleFirstTimeSetup() {
+      const btn = document.getElementById('btnFirstTime');
+      if (btn.disabled) return;
+
       const newPwd = document.getElementById('newPassword').value;
       const confirmPwd = document.getElementById('confirmPassword').value;
       const msgBox = document.getElementById('firstTimeMsg');
-      const btn = document.getElementById('btnFirstTime');
 
+      msgBox.className = "msg-box error";
       if (!newPwd || !confirmPwd) return msgBox.innerText = "請完整填寫新密碼！";
       if (newPwd !== confirmPwd) return msgBox.innerText = "兩次輸入的密碼不一致！";
       if (newPwd.length < 6) return msgBox.innerText = "為了帳號安全，新密碼長度必須至少為 6 個字元！";
@@ -339,7 +376,7 @@
       btn.disabled = true;
       btn.innerText = "密碼更新中...";
       
-      if (isIOS && REDIRECT_TARGET) {
+      if (isIOS && isInIframe && REDIRECT_TARGET) {
         ssoPendingWindow = window.open('', '_blank');
         if (ssoPendingWindow) {
           ssoPendingWindow.document.write('<h2 style="font-family:sans-serif; text-align:center; margin-top:50px; color:#1a73e8;">密碼更新與驗證中，請稍候...</h2>');
@@ -349,6 +386,8 @@
       const user = auth.currentUser;
       if (!user) {
         if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
+        btn.disabled = false;
+        btn.innerText = "確認並更新密碼";
         switchView('view-login');
         return;
       }
@@ -401,7 +440,7 @@
       user.getIdToken(true).then((idToken) => {
         callGasApi('generateSSOToken', {
           idToken: idToken,
-          targetAppUrl: REDIRECT_TARGET || "https://sysop-coder.github.io/score/",
+          targetAppUrl: REDIRECT_TARGET,
           justUpdatedPassword: Boolean(justUpdatedPassword),
           isDefaultPassword: false
         }).then(function(response) {
@@ -414,15 +453,6 @@
           }
 
           if (response.success) {
-            if (!REDIRECT_TARGET) {
-              if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
-              const btn = document.getElementById('btnLogin');
-              btn.innerText = "登入成功";
-              document.getElementById('loginMsg').className = "msg-box success";
-              document.getElementById('loginMsg').innerText = "身分驗證成功！目前處於獨立測試狀態。";
-              return;
-            }
-
             const targetHref = String(response.redirectUrl || "");
             if (!targetHref.startsWith("https://sysop-coder.github.io/")) {
               if (ssoPendingWindow) { ssoPendingWindow.close(); ssoPendingWindow = null; }
@@ -431,7 +461,7 @@
             }
 
             if (ssoPendingWindow) {
-              ssoPendingWindow.location.href = targetHref;
+              ssoPendingWindow.location.replace(targetHref);
               const successStr = "✅ 驗證成功！已在新分頁開啟系統。";
               if (document.getElementById('view-login') && !document.getElementById('view-login').classList.contains('hidden')) {
                 document.getElementById('loginMsg').className = "msg-box success";
@@ -442,7 +472,7 @@
               }
             } else {
               try {
-                window.top.location.href = targetHref;
+                window.top.location.replace(targetHref);
               } catch (e) {
                 if (document.getElementById('view-login') && !document.getElementById('view-login').classList.contains('hidden')) {
                   renderSafeRedirectButton('loginMsg', 'btnLogin', targetHref, "✅ 驗證成功！請點擊下方按鈕：");
@@ -501,6 +531,6 @@
         });
       });
     }
-  </script>
+</script>
 </body>
 </html>
